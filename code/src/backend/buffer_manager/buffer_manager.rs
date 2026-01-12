@@ -150,6 +150,13 @@ impl BufferManager {
                         }
                         tuple_bytes.extend_from_slice(&t);
                     }
+                    "BOOLEAN" => {
+                        let bool_val = match val.to_lowercase().as_str() {
+                            "true" | "t" | "1" | "yes" | "y" => 1u8,
+                            _ => 0u8,
+                        };
+                        tuple_bytes.push(bool_val);
+                    }
                     _ => continue,
                 }
             }
