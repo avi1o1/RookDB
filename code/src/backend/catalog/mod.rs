@@ -10,4 +10,6 @@ pub use catalog::{
     create_table,
     show_databases,
     show_tables,
+    delete_database,
+    delete_table,
 };

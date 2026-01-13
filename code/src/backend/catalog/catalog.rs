@@ -96,11 +96,7 @@ pub fn save_catalog(catalog: &Catalog) {
     // Write catalog to disk
     fs::write(catalog_path, json).expect("Failed to write catalog file to disk");
 
-    println!(
-        "{} {}",
-        "✓".green(),
-        format!("Catalog file updated at {}", catalog_path.display()).green()
-    );
+    println!("{}", format!("Catalog file updated at {}", catalog_path.display()).cyan());
 }
 
 // Prints all databases present in the catalog.
@@ -259,4 +255,113 @@ pub fn show_tables(catalog: &Catalog, db_name: &str) {
     } else {
         println!("{}", format!("Database '{}' not found.", db_name).red());
     }
+}
+
+/// Deletes a table from the catalog and removes its data file from disk.
+pub fn delete_table(catalog: &mut Catalog, db_name: &str, table_name: &str) -> bool {
+    // Check if database exists
+    if !catalog.databases.contains_key(db_name) {
+        println!(
+            "{}",
+            format!("Database '{}' does not exist. Cannot delete table '{}'.", db_name, table_name).red()
+        );
+        return false;
+    }
+
+    let database = catalog.databases.get_mut(db_name).unwrap();
+
+    // Check if table exists
+    if !database.tables.contains_key(table_name) {
+        println!(
+            "{}",
+            format!("Table '{}' does not exist in database '{}'.", table_name, db_name).red()
+        );
+        return false;
+    }
+
+    // Remove table from catalog
+    database.tables.remove(table_name);
+
+    // Persist catalog changes
+    save_catalog(catalog);
+
+    // Delete table file from disk
+    let table_file_path = TABLE_FILE_TEMPLATE
+        .replace("{database}", db_name)
+        .replace("{table}", table_name);
+
+    let table_path = Path::new(&table_file_path);
+    if table_path.exists() {
+        match fs::remove_file(table_path) {
+            Ok(_) => {
+                println!(
+                    "{} {}",
+                    "✓".green(),
+                    format!("Table file '{}' deleted from disk.", table_file_path).green()
+                );
+            }
+            Err(e) => {
+                println!(
+                    "{}",
+                    format!("Failed to delete table file '{}': {}", table_file_path, e).red()
+                );
+                return false;
+            }
+        }
+    }
+
+    println!(
+        "{} {}",
+        "✓".green(),
+        format!("Table '{}' deleted successfully from database '{}'.", table_name, db_name).green()
+    );
+    true
+}
+
+/// Deletes a database from the catalog and removes its directory from disk.
+pub fn delete_database(catalog: &mut Catalog, db_name: &str) -> bool {
+    // Check if database exists
+    if !catalog.databases.contains_key(db_name) {
+        println!(
+            "{}",
+            format!("Database '{}' does not exist.", db_name).red()
+        );
+        return false;
+    }
+
+    // Remove database from catalog
+    catalog.databases.remove(db_name);
+
+    // Persist catalog changes
+    save_catalog(catalog);
+
+    // Delete database directory from disk
+    let db_path_str = TABLE_DIR_TEMPLATE.replace("{database}", db_name);
+    let db_path = Path::new(&db_path_str);
+
+    if db_path.exists() {
+        match fs::remove_dir_all(db_path) {
+            Ok(_) => {
+                println!(
+                    "{} {}",
+                    "✓".green(),
+                    format!("Database directory '{}' deleted from disk.", db_path_str).green()
+                );
+            }
+            Err(e) => {
+                println!(
+                    "{}",
+                    format!("Failed to delete database directory '{}': {}", db_path_str, e).red()
+                );
+                return false;
+            }
+        }
+    }
+
+    println!(
+        "{} {}",
+        "✓".green(),
+        format!("Database '{}' deleted successfully.", db_name).green()
+    );
+    true
 }

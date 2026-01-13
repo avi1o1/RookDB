@@ -109,3 +109,66 @@ pub fn show_table_statistics_cmd(
 
     Ok(())
 }
+
+/// Deletes a table from the selected database
+pub fn delete_table_cmd(
+    catalog: &mut Catalog,
+    current_db: &Option<String>,
+) -> io::Result<()> {
+    let db = match current_db {
+        Some(db) => db.clone(),
+        None => {
+            println!("{}", "No database selected. Please select a database first.".purple().bold());
+            return Ok(());
+        }
+    };
+
+    // Show available tables
+    if let Some(database) = catalog.databases.get(&db) {
+        if database.tables.is_empty() {
+            println!("{}", format!("No tables found in the database '{}'.", db).purple().bold());
+            return Ok(());
+        }
+        
+        println!("{}", format!("Tables in Database: {}", db).bold().purple());
+        for table_name in database.tables.keys() {
+            println!("{} {}", "→".cyan(), table_name.bold().white());
+        }
+    } else {
+        println!("{}", format!("Database '{}' not found.", db).red());
+        return Ok(());
+    }
+
+    let mut table_name = String::new();
+    print!("{}", "Enter table name to delete (Enter '/cancel' to cancel): ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut table_name)?;
+    let table_name = table_name.trim().to_string();
+
+    if table_name.trim() == "/cancel" {
+        println!("{}", "Table deletion cancelled.".cyan());
+        return Ok(());
+    }
+
+    if table_name.is_empty() {
+        println!("{}", "Table name cannot be empty.".red());
+        return Ok(());
+    }
+
+    // Confirmation prompt
+    print!("{}", format!("Are you sure you want to delete table '{}' from database '{}'? (y/n): ", table_name, db).yellow().bold());
+    io::stdout().flush()?;
+    let mut confirm = String::new();
+    io::stdin().read_line(&mut confirm)?;
+
+    if confirm.trim().to_lowercase() != "y" {
+        println!("{}", "Table deletion cancelled.".yellow());
+        return Ok(());
+    }
+
+    // Import delete_table function
+    use storage_manager::catalog::delete_table;
+    delete_table(catalog, &db, &table_name);
+
+    Ok(())
+}

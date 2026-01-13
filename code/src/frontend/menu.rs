@@ -39,20 +39,22 @@ pub fn print_menu() {
     println!("{}", format!("║ {:<width$} ║", "Choose an option:".bold().white(), width = WIDTH - 4).cyan());
     println!("{}", format!("╠{}╣", "═".repeat(WIDTH - 2)).cyan());
     println!("{}", format!("║ {:<width$} ║", "Database Operations:".bold().blue(), width = WIDTH - 4).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "1.".green(), "Show Databases", width = WIDTH - 7).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "2.".green(), "Create Database", width = WIDTH - 7).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "3.".green(), "Select Database", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "DB1.".green(), "Show Databases", width = WIDTH - 9).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "DB2.".green(), "Create Database", width = WIDTH - 9).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "DB3.".green(), "Select Database", width = WIDTH - 9).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "DB4.".green(), "Delete Database", width = WIDTH - 9).cyan());
     println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
     println!("{}", format!("║ {:<width$} ║", "Table Operations:".bold().blue(), width = WIDTH - 4).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "4.".green(), "Show Tables", width = WIDTH - 7).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "5.".green(), "Create Table", width = WIDTH - 7).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "6.".green(), "Show Table Statistics", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "T1.".green(), "Show Tables", width = WIDTH - 8).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "T2.".green(), "Create Table", width = WIDTH - 8).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "T3.".green(), "Table Statistics", width = WIDTH - 8).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "T4.".green(), "Delete Table", width = WIDTH - 8).cyan());
     println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
     println!("{}", format!("║ {:<width$} ║", "Data Operations:".bold().blue(), width = WIDTH - 4).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "7.".green(), "Load CSV", width = WIDTH - 7).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "8.".green(), "Show Tuples", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "D1.".green(), "Load CSV", width = WIDTH - 8).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "D2.".green(), "Show Tuples", width = WIDTH - 8).cyan());
     println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
-    println!("{}", format!("║ {} {:<width$} ║", "0.".red(), "Exit", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "X0.".red(), "Exit", width = WIDTH - 8).cyan());
     println!("{}", format!("╚{}╝", "═".repeat(WIDTH - 2)).cyan());
 }
 
@@ -83,26 +85,28 @@ pub fn run() -> io::Result<()> {
 
         let mut choice = String::new();
         io::stdin().read_line(&mut choice)?;
-        let choice = choice.trim();
+        let choice = choice.trim().to_uppercase();
 
         // Dispatch command based on user selection
-        match choice {
-            "1" => database_cmd::show_databases_cmd(&catalog),
-            "2" => database_cmd::create_database_cmd(&mut catalog)?,
-            "3" => database_cmd::select_database_cmd(&catalog, &mut current_db)?,
-            "4" => table_cmd::show_tables_cmd(&catalog, &current_db),
-            "5" => table_cmd::create_table_cmd(
+        match choice.as_str() {
+            "DB1" => database_cmd::show_databases_cmd(&catalog),
+            "DB2" => database_cmd::create_database_cmd(&mut catalog)?,
+            "DB3" => database_cmd::select_database_cmd(&catalog, &mut current_db)?,
+            "DB4" => database_cmd::delete_database_cmd(&mut catalog, &mut current_db)?,
+            "T1" => table_cmd::show_tables_cmd(&catalog, &current_db),
+            "T2" => table_cmd::create_table_cmd(
                 &mut catalog,
                 &mut buffer_manager,
                 &current_db,
             )?,
-            "6" => table_cmd::show_table_statistics_cmd(&current_db)?,
-            "7" => data_cmd::load_csv_cmd(
+            "T3" => table_cmd::show_table_statistics_cmd(&current_db)?,
+            "T4" => table_cmd::delete_table_cmd(&mut catalog, &current_db)?,
+            "D1" => data_cmd::load_csv_cmd(
                 &mut buffer_manager,
                 &current_db,
             )?,
-            "8" => data_cmd::show_tuples_cmd(&current_db)?,
-            "0" => {
+            "D2" => data_cmd::show_tuples_cmd(&current_db)?,
+            "X0" => {
                 println!("{}", "Exiting RookDB. Goodbye!".purple().bold());
                 break;
             }

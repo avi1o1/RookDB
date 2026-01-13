@@ -67,3 +67,71 @@ pub fn select_database_cmd(
 
     Ok(())
 }
+
+/// Deletes an existing database from the catalog
+pub fn delete_database_cmd(
+    catalog: &mut Catalog,
+    current_db: &mut Option<String>,
+) -> io::Result<()> {
+
+    // Check if any databases exist
+    if catalog.databases.is_empty() {
+        println!("{}", "No databases found.".purple().bold());
+        return Ok(());
+    }
+
+    // Display available databases
+    println!("{}", "Available Databases:".bold().purple());
+    for db in catalog.databases.keys() {
+        println!("{} {}", "→".cyan(), db.bold().white());
+    }
+
+    // Read database name from user
+    let mut db_name = String::new();
+    print!("{}", "Enter database name to delete (Enter '/cancel' to cancel): ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut db_name)?;
+
+    if db_name.trim() == "/cancel" {
+        println!("{}", "Database deletion cancelled.".green());
+        return Ok(());
+    }
+
+    let db_name = db_name.trim().to_string();
+
+    if db_name.is_empty() {
+        println!("{}", "Database name cannot be empty.".red());
+        return Ok(());
+    }
+
+    // Check if database exists
+    if !catalog.databases.contains_key(&db_name) {
+        println!("{} {}", "✗".red(), format!("Database '{}' does not exist.", db_name).red());
+        return Ok(());
+    }
+
+    // Confirmation prompt
+    print!("{}", format!("Are you sure you want to delete database '{}'? This will delete all tables. (y/n): ", db_name).yellow().bold());
+    io::stdout().flush()?;
+    let mut confirm = String::new();
+    io::stdin().read_line(&mut confirm)?;
+
+    if confirm.trim().to_lowercase() != "y" {
+        println!("{}", "Database deletion cancelled.".yellow());
+        return Ok(());
+    }
+
+    // Clear current database if it's being deleted
+    if let Some(current) = current_db.as_ref() {
+        if current == &db_name {
+            *current_db = None;
+            println!("{}", "Current database selection cleared.".yellow());
+        }
+    }
+
+    // Import delete_database function
+    use storage_manager::catalog::delete_database;
+    delete_database(catalog, &db_name);
+
+    Ok(())
+}
