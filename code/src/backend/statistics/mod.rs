@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
+use std::path::Path;
+use colored::Colorize;
 
 use crate::page::PAGE_SIZE;
 
@@ -9,6 +11,13 @@ pub fn print_table_page_count(
     table_name: &str,
 ) -> io::Result<()> {
     let table_path = format!("database/base/{}/{}.dat", db_name, table_name);
+    
+    // Check if table file exists
+    if !Path::new(&table_path).exists() {
+        println!("{}", format!("✗ Table '{}' does not exist.", table_name).red());
+        return Ok(());
+    }
+    
     let mut file = File::open(&table_path)?;
 
     // Read header page (page 0)
@@ -21,8 +30,8 @@ pub fn print_table_page_count(
         u32::from_le_bytes(header_page[0..4].try_into().unwrap());
 
     println!(
-        "Table '{}' has {} total pages.",
-        table_name, total_pages
+        "{}",
+        format!("✓ Table '{}' has {} total pages.", table_name, total_pages).green()
     );
 
     Ok(())

@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::path::Path;
+use colored::Colorize;
 
 use crate::catalog::types::*;
 
@@ -38,11 +39,11 @@ pub fn init_catalog() {
             .expect("Failed to serialize empty catalog");
         fs::write(catalog_path, json).expect("Failed to write catalog file");
         println!(
-            "Catalog file not found. Created new catalog file at {}",
-            catalog_path.display()
+            "{}",
+            format!("Created new catalog file at {}", catalog_path.display()).cyan()
         );
     } else {
-        println!("Catalog file already exists at {}", catalog_path.display());
+        println!("{}", format!("Catalog file already exists at {}", catalog_path.display()).cyan());
     }
 }
 
@@ -53,7 +54,7 @@ pub fn load_catalog() -> Catalog {
 
     // Check if catalog file exists
     if !catalog_path.exists() {
-        eprintln!("Catalog file does not exist at {}.", catalog_path.display());
+        eprintln!("{}", format!("Catalog file does not exist at {}.", catalog_path.display()).red());
         return Catalog {
             databases: HashMap::new(),
         };
@@ -64,7 +65,7 @@ pub fn load_catalog() -> Catalog {
     let data = match data {
         Ok(content) => content,
         Err(err) => {
-            eprintln!("Failed to read catalog file: {}", err);
+            eprintln!("{}", format!("Failed to read catalog file: {}", err).red());
             return Catalog {
                 databases: HashMap::new(),
             };
@@ -77,7 +78,7 @@ pub fn load_catalog() -> Catalog {
             catalog
         }
         Err(err) => {
-            eprintln!("Failed to parse catalog JSON: {}", err);
+            eprintln!("{}", format!("Failed to parse catalog JSON: {}", err).red());
             Catalog {
                 databases: HashMap::new(),
             }
@@ -96,39 +97,36 @@ pub fn save_catalog(catalog: &Catalog) {
     fs::write(catalog_path, json).expect("Failed to write catalog file to disk");
 
     println!(
-        "Catalog File updated with In Memory Data {}",
-        catalog_path.display()
+        "{} {}",
+        "✓".green(),
+        format!("Catalog file updated at {}", catalog_path.display()).green()
     );
 }
 
 // Prints all databases present in the catalog.
 pub fn show_databases(catalog: &Catalog) {
-    println!("--------------------------");
-    println!("Databases in Catalog");
-    println!("--------------------------");
-
+    
     if catalog.databases.is_empty() {
-        println!("No databases found.\n");
+        println!("{}", "No databases found.".purple().bold());
         return;
     }
-
+    
+    println!("{}", "Databases in Catalog:".bold().purple());
     for db_name in catalog.databases.keys() {
-        println!("- {}", db_name);
+        println!("{} {}", "→".cyan(), db_name.bold().white());
     }
-
-    println!();
 }
 
 // Creates a new database entry in the catalog and its directory on disk.
 pub fn create_database(catalog: &mut Catalog, db_name: &str) -> bool {
      // Validate database name
     if db_name.is_empty() {
-        println!("Database name cannot be empty");
+        println!("{}", "Database name cannot be empty.".red());
         return false;
     }
 
     if catalog.databases.contains_key(db_name) {
-        println!("Database '{}' already exists", db_name);
+        println!("{}", format!("Database '{}' already exists.", db_name).red());
         return false;
     }
 
@@ -144,13 +142,13 @@ pub fn create_database(catalog: &mut Catalog, db_name: &str) -> bool {
     let json = match serde_json::to_string_pretty(&catalog) {
         Ok(j) => j,
         Err(e) => {
-            println!("Failed to serialize catalog: {}", e);
+            println!("{}", format!("Failed to serialize catalog: {}", e).red());
             return false;
         }
     };
 
     if let Err(e) = fs::write(CATALOG_FILE, json) {
-        println!("Failed to write catalog file: {}", e);
+        println!("{}", format!("Failed to write catalog file: {}", e).red());
         return false;
     }
 
@@ -160,12 +158,12 @@ pub fn create_database(catalog: &mut Catalog, db_name: &str) -> bool {
 
     if !db_path.exists() {
         if let Err(e) = fs::create_dir_all(db_path) {
-            println!("Failed to create database directory: {}", e);
+            println!("{}", format!("Failed to create database directory: {}", e).red());
             return false;
         }
         // println!("Created new database directory at {}", db_path.display());
     } else {
-        println!("Database directory already exists at {}", db_path.display());
+        println!("{} {}", "→".yellow(), format!("Database directory already exists at {}", db_path.display()).cyan());
     }
 
     // println!("Database '{}' created successfully", db_name);
@@ -178,8 +176,8 @@ pub fn create_table(catalog: &mut Catalog, db_name: &str, table_name: &str, colu
     // Step 1: Validate database existence
     if !catalog.databases.contains_key(db_name) {
         println!(
-            "Database '{}' does not exist. Cannot create table '{}'.",
-            db_name, table_name
+            "{}",
+            format!("Database '{}' does not exist. Cannot create table '{}'.", db_name, table_name).red()
         );
         return;
     }
@@ -189,8 +187,8 @@ pub fn create_table(catalog: &mut Catalog, db_name: &str, table_name: &str, colu
     // Prevent overwriting existing table
     if database.tables.contains_key(table_name) {
         println!(
-            "Table '{}' already exists in database '{}'. Skipping creation.",
-            table_name, db_name
+            "{}",
+            format!("Table '{}' already exists in database '{}'. Skipping creation.", table_name, db_name).yellow()
         );
         return;
     }
@@ -218,50 +216,47 @@ pub fn create_table(catalog: &mut Catalog, db_name: &str, table_name: &str, colu
             .open(&table_file_path)
         {
             Ok(mut file) => {
-                println!("Table data file created at '{}'.", table_file_path);
+                println!("{} {}", "→".yellow(), format!("Table data file created at '{}'.", table_file_path).cyan());
 
                 if let Err(e) = init_table(&mut file) {
-                    eprintln!("Failed to initialize table '{}': {}", table_name, e);
+                    eprintln!("{}", format!("Failed to initialize table '{}': {}", table_name, e).red());
                 } else {
-                    println!("Table '{}' initialized successfully.", table_name);
+                    println!("{} {}", "✓".green(), format!("Table '{}' initialized successfully.", table_name).green());
                 }
             }
             Err(e) => {
                 eprintln!(
-                    "Failed to create table data file '{}': {}",
-                    table_file_path, e
+                    "{}",
+                    format!("Failed to create table data file '{}': {}", table_file_path, e).red()
                 );
                 return;
             }
         }
     } else {
-        println!("Table data file '{}' already exists.", table_file_path);
+        println!("{} {}", "→".yellow(), format!("Table data file '{}' already exists.", table_file_path).cyan());
     }
 
     println!(
-        "Table '{}' created successfully in database '{}' and saved to catalog.",
-        table_name, db_name
+        "{} {}",
+        "✓".green(),
+        format!("Table '{}' created successfully in database '{}' and saved to catalog.", table_name, db_name).green()
     );
 }
 
 /// Lists all tables in the specified database.
 pub fn show_tables(catalog: &Catalog, db_name: &str) {
-    println!("--------------------------");
-    println!("Tables in Database: {}", db_name);
-    println!("--------------------------");
-
     if let Some(database) = catalog.databases.get(db_name) {
         if database.tables.is_empty() {
-            println!("No tables found in '{}'.\n", db_name);
+            println!("{}", format!("No tables found in the database '{}'.", db_name).purple().bold());
             return;
         }
-
+        
+        println!("{}", format!("Tables in Database: {}", db_name).bold().purple());
         for table_name in database.tables.keys() {
-            println!("- {}", table_name);
+            println!("{} {}", "→".cyan(), table_name.bold().white());
         }
 
-        println!();
     } else {
-        println!("Database '{}' not found.\n", db_name);
+        println!("{}", format!("Database '{}' not found.", db_name).red());
     }
 }

@@ -1,6 +1,7 @@
 ///! This file is to test load CSV file without using Buffer Manager.
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use colored::Colorize;
 
 use crate::catalog::types::Catalog;
 use crate::heap::insert_tuple;
@@ -53,10 +54,8 @@ pub fn load_csv(
         // Validate number of columns
         if values.len() != columns.len() {
             println!(
-                "Skipping row {}: expected {} columns, found {}",
-                i + 1,
-                columns.len(),
-                values.len()
+                "{}",
+                format!("Skipping row {}: expected {} columns, found {}", i + 1, columns.len(), values.len()).yellow()
             );
             continue;
         }
@@ -88,8 +87,8 @@ pub fn load_csv(
                 }
                 _ => {
                     println!(
-                        "Unsupported column type '{}' in column '{}'",
-                        col.data_type, col.name
+                        "{}",
+                        format!("Unsupported column type '{}' in column '{}'", col.data_type, col.name).red()
                     );
                     continue;
                 }
@@ -98,11 +97,11 @@ pub fn load_csv(
 
         // --- 5. Insert tuple into page system ---
         if let Err(e) = insert_tuple(file, &tuple_bytes) {
-            println!("Failed to insert row {}: {}", i + 1, e);
+            println!("{}", format!("Failed to insert row {}: {}", i + 1, e).red());
         } else {
             inserted += 1;
         }
     }
-    println!("Total Number of rows inserted: {}", inserted);
+    println!("{} {}", "✓".green(), format!("Total number of rows inserted: {}", inserted).green());
     Ok(())
 }

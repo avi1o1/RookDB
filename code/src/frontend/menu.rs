@@ -2,6 +2,7 @@
 //! to the appropriate operations. 
 
 use std::io::{self, Write};
+use colored::Colorize;
 
 // Core storage manager components
 use storage_manager::buffer_manager::BufferManager;
@@ -12,20 +13,59 @@ use crate::frontend::{
     database_cmd,
     table_cmd,
     data_cmd,
+    WIDTH,
 };
+
+// Prints the welcome message
+pub fn print_welcome_message() {
+    let title = "Welcome to RookDB";
+    let padding = (WIDTH - title.len() - 4) / 2; // 4 for "║ " and " ║"
+    let remaining = WIDTH - title.len() - 4 - padding;
+    
+    println!("{}", format!("╔{}╗", "═".repeat(WIDTH - 2)).cyan());
+    println!("{} {}{}{} {}", 
+        "║".cyan(), 
+        " ".repeat(padding),
+        title.bold().magenta(),
+        " ".repeat(remaining),
+        "║".cyan()
+    );
+    println!("{}", format!("╚{}╝", "═".repeat(WIDTH - 2)).cyan());
+}
+
+// Prints the interactive menu
+pub fn print_menu() {
+    println!("{}", format!("╔{}╗", "═".repeat(WIDTH - 2)).cyan());
+    println!("{}", format!("║ {:<width$} ║", "Choose an option:".bold().white(), width = WIDTH - 4).cyan());
+    println!("{}", format!("╠{}╣", "═".repeat(WIDTH - 2)).cyan());
+    println!("{}", format!("║ {:<width$} ║", "Database Operations:".bold().blue(), width = WIDTH - 4).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "1.".green(), "Show Databases", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "2.".green(), "Create Database", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "3.".green(), "Select Database", width = WIDTH - 7).cyan());
+    println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
+    println!("{}", format!("║ {:<width$} ║", "Table Operations:".bold().blue(), width = WIDTH - 4).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "4.".green(), "Show Tables", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "5.".green(), "Create Table", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "6.".green(), "Show Table Statistics", width = WIDTH - 7).cyan());
+    println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
+    println!("{}", format!("║ {:<width$} ║", "Data Operations:".bold().blue(), width = WIDTH - 4).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "7.".green(), "Load CSV", width = WIDTH - 7).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "8.".green(), "Show Tuples", width = WIDTH - 7).cyan());
+    println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "0.".red(), "Exit", width = WIDTH - 7).cyan());
+    println!("{}", format!("╚{}╝", "═".repeat(WIDTH - 2)).cyan());
+}
 
 /// Runs the main interactive menu loop
 pub fn run() -> io::Result<()> {
-    println!("--------------------------------------");
-    println!("Welcome to RookDB");
-    println!("--------------------------------------\n");
+    print_welcome_message();
 
     // Ensure catalog file exists
-    println!("Initializing Catalog File...\n");
+    println!("{} Initializing Catalog File...", "→".yellow());
     init_catalog();
 
     // Load catalog metadata into memory
-    println!("Loading Catalog...\n");
+    println!("{} Loading Catalog...", "→".yellow());
     let mut catalog = load_catalog();
 
     // Initialize buffer manager
@@ -35,21 +75,10 @@ pub fn run() -> io::Result<()> {
     let mut current_db: Option<String> = None;
 
     loop {
-        println!("\n=============================");
-        println!("Choose an option:");
-        println!("1. Show Databases");
-        println!("2. Create Database");
-        println!("3. Select Database");
-        println!("4. Show Tables");
-        println!("5. Create Table");
-        println!("6. Load CSV");
-        println!("7. Show Tuples");
-        println!("8. Show Table Statistics");
-        println!("9. Exit");
-        println!("=============================");
+        print_menu();
 
         // Read user input
-        print!("Enter your choice: ");
+        print!("{} ", "Enter your choice:".bold().yellow());
         io::stdout().flush()?;
 
         let mut choice = String::new();
@@ -67,17 +96,17 @@ pub fn run() -> io::Result<()> {
                 &mut buffer_manager,
                 &current_db,
             )?,
-            "6" => data_cmd::load_csv_cmd(
+            "6" => table_cmd::show_table_statistics_cmd(&current_db)?,
+            "7" => data_cmd::load_csv_cmd(
                 &mut buffer_manager,
                 &current_db,
             )?,
-            "7" => data_cmd::show_tuples_cmd(&current_db)?,
-            "8" => table_cmd::show_table_statistics_cmd(&current_db)?,
-            "9" => {
-                println!("Exiting RookDB. Goodbye!");
+            "8" => data_cmd::show_tuples_cmd(&current_db)?,
+            "0" => {
+                println!("{}", "Exiting RookDB. Goodbye!".purple().bold());
                 break;
             }
-            _ => println!("Invalid option."),
+            _ => println!("{}", "✗ Invalid option.".red()),
         }
     }
 

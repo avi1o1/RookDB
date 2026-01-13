@@ -1,6 +1,7 @@
 use crate::catalog::types::Catalog;
 use crate::disk::{read_page, write_page};
 use crate::page::{PAGE_SIZE, Page, init_page, page_free_space, ITEM_ID_SIZE};
+use colored::Colorize;
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom};
@@ -18,7 +19,7 @@ impl BufferManager {
         init_page(&mut header);
         pages.push(header);
 
-        println!("Buffer Manager initialized with header page only.");
+        println!("{}", "Buffer Manager initialized with header page only.".cyan());
 
         Self { pages }
     }
@@ -44,8 +45,9 @@ impl BufferManager {
         let total_pages = (file_size as usize) / PAGE_SIZE;
 
         println!(
-            "Loading table '{}' ({} bytes, {} pages)...",
-            table_name, file_size, total_pages
+            "{} {}",
+            "→".yellow(),
+            format!("Loading table '{}' ({} bytes, {} pages)...", table_name, file_size, total_pages).cyan()
         );
 
         // Reset in-memory buffer
@@ -73,9 +75,9 @@ impl BufferManager {
         }
 
         println!(
-            "Loaded {} pages (1 header + {} data).",
-            self.pages.len(),
-            self.pages.len().saturating_sub(1)
+            "{} {}",
+            "✓".green(),
+            format!("Loaded {} pages (1 header + {} data).", self.pages.len(), self.pages.len().saturating_sub(1)).green()
         );
 
         Ok(())
@@ -125,10 +127,8 @@ impl BufferManager {
             let values: Vec<&str> = row.split(',').map(|v| v.trim()).collect();
             if values.len() != columns.len() {
                 println!(
-                    "Skipping row {}: expected {} columns, got {}",
-                    i + 1,
-                    columns.len(),
-                    values.len()
+                    "{}",
+                    format!("Skipping row {}: Expected {} columns, got {}", i + 1, columns.len(), values.len()).red()
                 );
                 continue;
             }
@@ -198,7 +198,6 @@ impl BufferManager {
 
                 page.data[0..4].copy_from_slice(&lower.to_le_bytes());
                 page.data[4..8].copy_from_slice(&upper.to_le_bytes());
-                println!("Lower: {}", lower);
                 inserted_rows += 1;
                 break;
             }
@@ -208,10 +207,19 @@ impl BufferManager {
         self.pages[0].data[0..4]
             .copy_from_slice(&(used_pages as u32).to_le_bytes());
 
+        if inserted_rows == 0 {
+            println!(
+                "{} {}",
+                "✗".red(),
+                "No rows were inserted from the CSV file.".red()
+            );
+            return Ok(used_pages);
+        }
+
         println!(
-            "Loaded {} rows into {} data pages.",
-            inserted_rows,
-            used_pages - 1
+            "{} {}",
+            "✓".green(),
+            format!("Loaded {} rows into {} data page(s).", inserted_rows, used_pages - 1).green()
         );
 
         Ok(used_pages)
