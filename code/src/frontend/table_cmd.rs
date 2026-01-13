@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use colored::Colorize;
 
 use storage_manager::buffer_manager::BufferManager;
-use storage_manager::catalog::{Catalog, Column, create_table, show_tables};
+use storage_manager::catalog::{Catalog, Column, create_table, show_tables, VALID_TYPES};
 use storage_manager::statistics::print_table_page_count;
 
 /// Displays tables in the currently selected database
@@ -39,8 +39,18 @@ pub fn create_table_cmd(
     io::stdin().read_line(&mut table_name)?;
     let table_name = table_name.trim().to_string();
 
-    println!("{}", "Enter column details (Press Enter on an empty line to finish)".yellow().bold());
+    // check if table already exists
+    if let Some(database) = catalog.databases.get(&db) {
+        if database.tables.contains_key(&table_name) {
+            println!("{}", format!("✗ Table '{}' already exists in database '{}'.", table_name, db).red());
+            return Ok(());
+        }
+    } else {
+        println!("{}", format!("✗ Database '{}' not found in catalog.", db).red());
+        return Ok(());
+    }
 
+    println!("{}", "Enter column details (Press Enter on an empty line to finish)".yellow().bold());
 
     let mut columns = Vec::new();
     loop {
@@ -55,7 +65,13 @@ pub fn create_table_cmd(
 
         let parts: Vec<&str> = input.split(':').collect();
         if parts.len() != 2 {
-            println!("{}", "Invalid format. Please use name:type (e.g. id:INT)".red());
+            println!("{}", "Invalid format. Please use column_name:data_type (e.g. name:TEXT)".red());
+            continue;
+        }
+
+        // check if data type is valid
+        if !VALID_TYPES.contains(&parts[1].to_uppercase().as_str()) {
+            println!("{}", format!("Invalid data type '{}'. Supported types are: {}", parts[1], VALID_TYPES.join(", ")).red());
             continue;
         }
 

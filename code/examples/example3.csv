@@ -1,0 +1,3 @@
+name,age,salary,is_active,birth_date,check_in,last_login
+Alice,30,75000.50,true,1993-05-15,09:00:00,2026-01-13 09:00:00
+Bob,25,65000.00,false,1998-12-20,14:30:45,2026-01-12 14:30:45

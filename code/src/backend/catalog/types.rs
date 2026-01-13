@@ -4,6 +4,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Valid data types supported by the database
+pub const VALID_TYPES: &[&str] = &["INT", "TEXT", "BOOLEAN", "FLOAT", "DATE", "TIME", "DATETIME"];
+
 /// Represents a column within a table.
 #[derive(Serialize, Deserialize)]
 pub struct Column {

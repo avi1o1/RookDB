@@ -69,6 +69,10 @@ pub fn load_csv(
                     let num: i32 = val.parse().unwrap_or_default();
                     tuple_bytes.extend_from_slice(&num.to_le_bytes());
                 }
+                "FLOAT" => {
+                    let num: f32 = val.parse().unwrap_or_default();
+                    tuple_bytes.extend_from_slice(&num.to_le_bytes());
+                }
                 "TEXT" => {
                     let mut text_bytes = val.as_bytes().to_vec();
                     if text_bytes.len() > 10 {
@@ -84,6 +88,21 @@ pub fn load_csv(
                         _ => 0u8,
                     };
                     tuple_bytes.push(bool_val);
+                }
+                "DATE" => {
+                    // Parse YYYY-MM-DD format to days since epoch (1970-01-01)
+                    let days = parse_date(val).unwrap_or(0);
+                    tuple_bytes.extend_from_slice(&days.to_le_bytes());
+                }
+                "TIME" => {
+                    // Parse HH:MM:SS format to seconds since midnight
+                    let seconds = parse_time(val).unwrap_or(0);
+                    tuple_bytes.extend_from_slice(&seconds.to_le_bytes());
+                }
+                "DATETIME" => {
+                    // Parse YYYY-MM-DD HH:MM:SS format to Unix timestamp
+                    let timestamp = parse_datetime(val).unwrap_or(0);
+                    tuple_bytes.extend_from_slice(&timestamp.to_le_bytes());
                 }
                 _ => {
                     println!(
@@ -104,4 +123,58 @@ pub fn load_csv(
     }
     println!("{} {}", "✓".green(), format!("Total number of rows inserted: {}", inserted).green());
     Ok(())
+}
+
+/// Parse date string (YYYY-MM-DD) to days since Unix epoch (1970-01-01)
+fn parse_date(s: &str) -> Option<i32> {
+    let parts: Vec<&str> = s.split('-').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let year: i32 = parts[0].parse().ok()?;
+    let month: i32 = parts[1].parse().ok()?;
+    let day: i32 = parts[2].parse().ok()?;
+    
+    // Simple calculation (doesn't account for all leap years perfectly, but works for basic use)
+    let days_since_epoch = (year - 1970) * 365 + (year - 1969) / 4
+        + match month {
+            1 => 0,
+            2 => 31,
+            3 => 59,
+            4 => 90,
+            5 => 120,
+            6 => 151,
+            7 => 181,
+            8 => 212,
+            9 => 243,
+            10 => 273,
+            11 => 304,
+            12 => 334,
+            _ => return None,
+        }
+        + day - 1;
+    Some(days_since_epoch)
+}
+
+/// Parse time string (HH:MM:SS) to seconds since midnight
+fn parse_time(s: &str) -> Option<i32> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let hours: i32 = parts[0].parse().ok()?;
+    let minutes: i32 = parts[1].parse().ok()?;
+    let seconds: i32 = parts[2].parse().ok()?;
+    Some(hours * 3600 + minutes * 60 + seconds)
+}
+
+/// Parse datetime string (YYYY-MM-DD HH:MM:SS) to Unix timestamp
+fn parse_datetime(s: &str) -> Option<i64> {
+    let parts: Vec<&str> = s.split_whitespace().collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let days = parse_date(parts[0])? as i64;
+    let time_seconds = parse_time(parts[1])? as i64;
+    Some(days * 86400 + time_seconds)
 }

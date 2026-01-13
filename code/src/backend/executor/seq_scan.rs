@@ -61,6 +61,16 @@ pub fn show_tuples(
                             4 // "NULL"
                         }
                     }
+                    "FLOAT" => {
+                        if cursor + 4 <= tuple_data.len() {
+                            let val = f32::from_le_bytes(tuple_data[cursor..cursor + 4].try_into().unwrap());
+                            cursor += 4;
+                            format!("{:.2}", val).len()
+                        } else {
+                            cursor += 4;
+                            4 // "NULL"
+                        }
+                    }
                     "TEXT" => {
                         if cursor + 10 <= tuple_data.len() {
                             let text_bytes = &tuple_data[cursor..cursor + 10];
@@ -81,6 +91,18 @@ pub fn show_tuples(
                             cursor += 1;
                             4 // "NULL"
                         }
+                    }
+                    "DATE" => {
+                        cursor += 4;
+                        10 // "YYYY-MM-DD"
+                    }
+                    "TIME" => {
+                        cursor += 4;
+                        8 // "HH:MM:SS"
+                    }
+                    "DATETIME" => {
+                        cursor += 8;
+                        19 // "YYYY-MM-DD HH:MM:SS"
                     }
                     _ => {
                         13 // "<unsupported>"
@@ -140,6 +162,16 @@ pub fn show_tuples(
                             "NULL".to_string()
                         }
                     }
+                    "FLOAT" => {
+                        if cursor + 4 <= tuple_data.len() {
+                            let val = f32::from_le_bytes(tuple_data[cursor..cursor + 4].try_into().unwrap());
+                            cursor += 4;
+                            format!("{:.2}", val)
+                        } else {
+                            cursor += 4;
+                            "NULL".to_string()
+                        }
+                    }
                     "TEXT" => {
                         if cursor + 10 <= tuple_data.len() {
                             let text_bytes = &tuple_data[cursor..cursor + 10];
@@ -161,6 +193,36 @@ pub fn show_tuples(
                             "NULL".to_string()
                         }
                     }
+                    "DATE" => {
+                        if cursor + 4 <= tuple_data.len() {
+                            let days = i32::from_le_bytes(tuple_data[cursor..cursor + 4].try_into().unwrap());
+                            cursor += 4;
+                            format_date(days)
+                        } else {
+                            cursor += 4;
+                            "NULL".to_string()
+                        }
+                    }
+                    "TIME" => {
+                        if cursor + 4 <= tuple_data.len() {
+                            let seconds = i32::from_le_bytes(tuple_data[cursor..cursor + 4].try_into().unwrap());
+                            cursor += 4;
+                            format_time(seconds)
+                        } else {
+                            cursor += 4;
+                            "NULL".to_string()
+                        }
+                    }
+                    "DATETIME" => {
+                        if cursor + 8 <= tuple_data.len() {
+                            let timestamp = i64::from_le_bytes(tuple_data[cursor..cursor + 8].try_into().unwrap());
+                            cursor += 8;
+                            format_datetime(timestamp)
+                        } else {
+                            cursor += 8;
+                            "NULL".to_string()
+                        }
+                    }
                     _ => {
                         "<unsupported>".to_string()
                     }
@@ -177,4 +239,47 @@ pub fn show_tuples(
     
     println!("{}", "--- End of table tuples ---".bold().purple());
     Ok(())
+}
+
+/// Format days since epoch to YYYY-MM-DD
+fn format_date(days: i32) -> String {
+    let mut year = 1970;
+    let mut remaining_days = days;
+    
+    loop {
+        let year_days = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 366 } else { 365 };
+        if remaining_days < year_days {
+            break;
+        }
+        remaining_days -= year_days;
+        year += 1;
+    }
+    
+    let month_days = [31, if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let mut month = 1;
+    for &days_in_month in &month_days {
+        if remaining_days < days_in_month {
+            break;
+        }
+        remaining_days -= days_in_month;
+        month += 1;
+    }
+    
+    let day = remaining_days + 1;
+    format!("{:04}-{:02}-{:02}", year, month, day)
+}
+
+/// Format seconds since midnight to HH:MM:SS
+fn format_time(seconds: i32) -> String {
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, secs)
+}
+
+/// Format Unix timestamp to YYYY-MM-DD HH:MM:SS
+fn format_datetime(timestamp: i64) -> String {
+    let days = (timestamp / 86400) as i32;
+    let time_seconds = (timestamp % 86400) as i32;
+    format!("{} {}", format_date(days), format_time(time_seconds))
 }
