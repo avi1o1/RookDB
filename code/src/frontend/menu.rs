@@ -54,6 +54,7 @@ pub fn print_menu() {
     println!("{}", format!("║ {} {:<width$} ║", "D1.".green(), "Load CSV", width = WIDTH - 8).cyan());
     println!("{}", format!("║ {} {:<width$} ║", "D2.".green(), "Show Tuples", width = WIDTH - 8).cyan());
     println!("{}", format!("║ {} {:<width$} ║", "D3.".green(), "Update Tuple", width = WIDTH - 8).cyan());
+    println!("{}", format!("║ {} {:<width$} ║", "D4.".green(), "Insert Tuple", width = WIDTH - 8).cyan());
     println!("{}", format!("╠{}╣", "─".repeat(WIDTH - 2)).cyan());
     println!("{}", format!("║ {} {:<width$} ║", "X0.".red(), "Exit", width = WIDTH - 8).cyan());
     println!("{}", format!("╚{}╝", "═".repeat(WIDTH - 2)).cyan());
@@ -108,6 +109,7 @@ pub fn run() -> io::Result<()> {
             )?,
             "D2" => data_cmd::show_tuples_cmd(&current_db)?,
             "D3" => data_cmd::update_tuple_cmd(&current_db)?,
+            "D4" => data_cmd::insert_tuple_cmd(&current_db)?,
             "X0" => {
                 println!("{}", "Exiting RookDB. Goodbye!".purple().bold());
                 break;

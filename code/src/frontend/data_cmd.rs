@@ -5,7 +5,7 @@ use colored::Colorize;
 use storage_manager::catalog::load_catalog;
 use storage_manager::buffer_manager::BufferManager;
 use storage_manager::table::page_count;
-use storage_manager::executor::{show_tuples, update_tuple};
+use storage_manager::executor::{show_tuples, update_tuple, insert_tuple_manual};
 
 pub fn load_csv_cmd(
     buffer_manager: &mut BufferManager,
@@ -187,6 +187,81 @@ pub fn update_tuple_cmd(current_db: &Option<String>) -> io::Result<()> {
         }
         Err(e) => {
             println!("{}", format!("✗ Failed to update tuple: {}", e).red());
+        }
+    }
+
+    Ok(())
+}
+
+pub fn insert_tuple_cmd(current_db: &Option<String>) -> io::Result<()> {
+    let db = match current_db {
+        Some(db) => db.clone(),
+        None => {
+            println!("{}", "No database selected. Please select a database first.".purple().bold());
+            return Ok(());
+        }
+    };
+
+    let mut table = String::new();
+    print!("{}", "Enter table name: ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut table)?;
+    let table = table.trim().to_string();
+
+    // Check if table exists in catalog
+    let catalog = load_catalog();
+    
+    if let Some(database) = catalog.databases.get(&db) {
+        if !database.tables.contains_key(&table) {
+            println!("{}", format!("✗ Table '{}' does not exist in database '{}'.", table, db).red());
+            return Ok(());
+        }
+    } else {
+        println!("{}", format!("✗ Database '{}' not found in catalog.", db).red());
+        return Ok(());
+    }
+
+    let path = format!("database/base/{}/{}.dat", db, table);
+    
+    // Check if the file exists
+    if !std::path::Path::new(&path).exists() {
+        println!("{}", format!("✗ Table file not found at path: {}", path).red());
+        return Ok(());
+    }
+
+    // Get table schema to prompt for each column
+    let db_ref = catalog.databases.get(&db).unwrap();
+    let table_ref = db_ref.tables.get(&table).unwrap();
+    let columns = &table_ref.columns;
+
+    // Display table schema
+    println!("{}", "\nTable Schema:".bold().cyan());
+    for (idx, col) in columns.iter().enumerate() {
+        println!("  {}. {} ({})", idx + 1, col.name.bold().white(), col.data_type.yellow());
+    }
+    println!();
+
+    // Collect values for each column
+    let mut values: Vec<String> = Vec::new();
+    
+    for col in columns.iter() {
+        let mut value = String::new();
+        print!("{}", format!("Enter value for '{}' ({}): ", col.name, col.data_type).yellow().bold());
+        io::stdout().flush()?;
+        io::stdin().read_line(&mut value)?;
+        values.push(value.trim().to_string());
+    }
+
+    // Open the table file
+    let mut file = OpenOptions::new().read(true).write(true).open(path)?;
+
+    // Call the insert_tuple_manual function
+    match insert_tuple_manual(&catalog, &db, &table, &mut file, &values) {
+        Ok(_) => {
+            // Success message is printed by the insert_tuple_manual function
+        }
+        Err(e) => {
+            println!("{}", format!("✗ Failed to insert tuple: {}", e).red());
         }
     }
 
