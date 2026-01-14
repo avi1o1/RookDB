@@ -5,7 +5,7 @@ use colored::Colorize;
 use storage_manager::catalog::load_catalog;
 use storage_manager::buffer_manager::BufferManager;
 use storage_manager::table::page_count;
-use storage_manager::executor::{show_tuples, update_tuple, insert_tuple_manual};
+use storage_manager::executor::{show_tuples, update_tuple, insert_tuple_manual, delete_tuple, get_tuple_for_confirmation};
 
 pub fn load_csv_cmd(
     buffer_manager: &mut BufferManager,
@@ -137,9 +137,9 @@ pub fn update_tuple_cmd(current_db: &Option<String>) -> io::Result<()> {
         return Ok(());
     }
 
-    // Get tuple_id (row_id)
+    // Get row_id
     let mut tuple_id_str = String::new();
-    print!("{}", "Enter tuple_id (row_id): ".yellow().bold());
+    print!("{}", "Enter row_id: ".yellow().bold());
     io::stdout().flush()?;
     io::stdin().read_line(&mut tuple_id_str)?;
     let tuple_id = match tuple_id_str.trim().parse::<u32>() {
@@ -262,6 +262,94 @@ pub fn insert_tuple_cmd(current_db: &Option<String>) -> io::Result<()> {
         }
         Err(e) => {
             println!("{}", format!("✗ Failed to insert tuple: {}", e).red());
+        }
+    }
+
+    Ok(())
+}
+
+pub fn delete_tuple_cmd(current_db: &Option<String>) -> io::Result<()> {
+    let db = match current_db {
+        Some(db) => db.clone(),
+        None => {
+            println!("{}", "No database selected. Please select a database first.".purple().bold());
+            return Ok(());
+        }
+    };
+
+    let mut table = String::new();
+    print!("{}", "Enter table name: ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut table)?;
+    let table = table.trim().to_string();
+
+    // Check if table exists in catalog
+    let catalog = load_catalog();
+    
+    if let Some(database) = catalog.databases.get(&db) {
+        if !database.tables.contains_key(&table) {
+            println!("{}", format!("✗ Table '{}' does not exist in database '{}'.", table, db).red());
+            return Ok(());
+        }
+    } else {
+        println!("{}", format!("✗ Database '{}' not found in catalog.", db).red());
+        return Ok(());
+    }
+
+    let path = format!("database/base/{}/{}.dat", db, table);
+    
+    // Check if the file exists
+    if !std::path::Path::new(&path).exists() {
+        println!("{}", format!("✗ Table file not found at path: {}", path).red());
+        return Ok(());
+    }
+
+    // Get row_id
+    let mut tuple_id_str = String::new();
+    print!("{}", "Enter row_id to delete: ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut tuple_id_str)?;
+    let tuple_id = match tuple_id_str.trim().parse::<u32>() {
+        Ok(id) => id,
+        Err(_) => {
+            println!("{}", "✗ Invalid tuple_id. Must be a non-negative integer.".red());
+            return Ok(());
+        }
+    };
+
+    // Display the tuple that will be deleted
+    let mut file = OpenOptions::new().read(true).write(true).open(&path)?;
+    
+    match get_tuple_for_confirmation(&catalog, &db, &table, &mut file, tuple_id) {
+        Ok(tuple_display) => {
+            println!("{}", "Tuple to be deleted:".bold().red());
+            print!("{}", tuple_display);
+        }
+        Err(e) => {
+            println!("{}", format!("✗ Failed to find tuple: {}", e).red());
+            return Ok(());
+        }
+    }
+
+    // Ask for confirmation
+    let mut confirmation = String::new();
+    print!("{}", "Are you sure you want to delete this tuple? (yes/no): ".yellow().bold());
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut confirmation)?;
+    let confirmation = confirmation.trim().to_lowercase();
+
+    if confirmation != "yes" && confirmation != "y" {
+        println!("{}", "Deletion cancelled.".cyan());
+        return Ok(());
+    }
+
+    // Perform the deletion
+    match delete_tuple(&catalog, &db, &table, &mut file, tuple_id) {
+        Ok(_) => {
+            // Success message is printed by the delete_tuple function
+        }
+        Err(e) => {
+            println!("{}", format!("✗ Failed to delete tuple: {}", e).red());
         }
     }
 

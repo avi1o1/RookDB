@@ -7,7 +7,7 @@ use crate::disk::{read_page, write_page};
 use crate::page::{Page, PAGE_HEADER_SIZE, ITEM_ID_SIZE};
 use crate::table::page_count;
 
-/// Update a specific column in a tuple identified by tuple_id (row_id)
+/// Update a specific column in a tuple identified by row_id
 pub fn update_tuple(
     catalog: &Catalog,
     db_name: &str,
